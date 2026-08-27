@@ -1,7 +1,7 @@
 # RIUE 新客户调查 · 部署说明（方案 B：自建可部署后端）
 
 > 目标：扫码填写 → 自动汇总 → **只有你本人凭密码在管理后台看实时数据**。
-> 一条命令起服务、零外部依赖（仅 Python 标准库）、可部署到 Render 免费主机或任意 VPS。
+> 一条命令起服务、零外部依赖（仅 Python 标准库）、可部署到 Render 免费主机或任意 VPS；**也可直接跑在自己电脑上通过 Cloudflare 隧道暴露公网（见第八节，无需任何账号）**。
 
 ---
 
@@ -128,3 +128,49 @@ ADMIN_PASSWORD='你的强密码' PORT=8787 nohup python3 server.py > server.log 
 - 管理后台无账号体系，仅凭这一密码；如多人需要查看，请通过腾讯文档镜像共享表格，而非共用此密码。
 - 数据库文件 `riue_survey.db` 含客户手机号等个人信息，请妥善保管服务器访问权限并定期备份。
 - 若地址暴露被刷，可在 `/api/submit` 前加一层限流或验证码（按需二次开发）。
+
+---
+
+## 八、零账号方案：自己电脑 + Cloudflare 隧道（无需 GitHub，推荐给不想注册云账号的用户）
+
+**适合**：不想注册 GitHub / Render，希望客户数据**全留自己电脑**、只有你凭密码看后台。
+
+**本质**：在你电脑上跑 `server.py`，再用 Cloudflare 免费隧道把 `localhost:8787` 变成一个公网 https 地址。无需任何云账号——quick tunnel 连 Cloudflare 账号都不用注册。
+
+**交互引导 + 自动汇总 + 仅你能看后台，三点全部保留**，与部署到 Render/VPS 完全一致。
+
+### 步骤
+
+1. 双击本项目里的 **`start_survey.bat`**（先启动后端，再拉起 Cloudflare 隧道）。
+2. 隧道窗口会打印一个 `https://xxxx.trycloudflare.com` 地址——这就是公网入口。
+3. 在本机运行，把二维码/海报指过去：
+   ```bash
+   python set_links.py https://xxxx.trycloudflare.com
+   ```
+4. 后台：`https://xxxx.trycloudflare.com/admin` → 输入 `ADMIN_PASSWORD` → 看实时汇总。
+
+### 固定地址（named tunnel，适合长期 / 多次投放）
+
+不想每次重启都重指二维码？注册个免费 Cloudflare 账号，建一条 named tunnel，地址就固定不变（`https://<隧道ID>.cfargotunnel.com`）。
+
+一次性准备（在 cmd 里执行）：
+```bash
+cloudflared tunnel login                # 浏览器登录 Cloudflare（免费账号）
+cloudflared tunnel create riue-survey   # 建隧道，记下隧道名
+```
+然后打开 `start_survey.bat`，把顶部的 `set "TUNNEL_NAME="` 改成 `set "TUNNEL_NAME=riue-survey"`，保存。
+之后每次双击脚本即复用固定地址，只需在第一次运行完后执行一次：
+```bash
+python set_links.py https://<隧道ID>.cfargotunnel.com
+```
+（脚本首次运行会打印这个固定地址，抄下来即可。）
+
+> named tunnel 的默认主机名就是 `<隧道ID>.cfargotunnel.com`，免费账号无需自己配 DNS；若想用自有域名，再执行 `cloudflared tunnel route dns <隧道名> <子域>` 即可。
+
+### 注意
+
+- 收集期间**电脑要保持开机**、`start_survey.bat` 的窗口别关。
+- 隧道重启（或电脑重启）后网址会变 → 重新跑第 3 步 `set_links.py` 指过去即可。
+- 若提示找不到 `cloudflared`：到 https://github.com/cloudflare/cloudflared/releases 下载 `cloudflared-windows-amd64.exe`，重命名为 `cloudflared.exe` 放进 PATH，再重跑脚本。
+- 数据在电脑上的 `riue_survey.db`，随时在后台「导出 CSV」下载备份。
+- 想要固定地址、不用每次重指二维码：见上方「固定地址（named tunnel）」小节，改 `start_survey.bat` 顶部的 `TUNNEL_NAME` 即可。
