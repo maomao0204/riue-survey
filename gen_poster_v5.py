@@ -9,7 +9,7 @@ import sys, io, base64
 sys.path.insert(0, r"C:\Users\ASUS\.workbuddy\plugins\cache\workbuddy-builtin\tencent-docs-plugin\1.0.0\skills\tencent-docs")
 import segno
 
-URL = "https://1e2038f82cc16f.lhr.life"
+URL = "https://4a22ddab7875eb.lhr.life"
 
 BG_TOP    = "#d6ebe4"
 BG_BOT    = "#eef5f2"
