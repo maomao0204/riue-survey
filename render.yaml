@@ -1,0 +1,33 @@
+# Render Blueprint 配置：在 Render 选择「Blueprints」导入本仓库即可一键建服务。
+# 完整步骤见 DEPLOY.md（第三节）。
+#
+# ⚠️ 持久化提醒（部署前务必读）：
+#   免费档（plan: free）文件系统是临时的，服务休眠/重启后 SQLite 数据会清空。
+#   长期收集请二选一：
+#     (a) 把 plan 改为 starter 并取消下方 disk 段注释（持久磁盘需付费档）；
+#     (b) 开启腾讯文档镜像：在 Environment 添加
+#         TENCENT_DOCS_ENABLED=1 / TENCENT_DOCS_FILE_ID / TENCENT_DOCS_SHEET_ID / TENCENT_DOCS_TOKEN
+#         数据实时复制到你的腾讯文档智能表格（SQLite 仅作缓存，丢了也不影响）。
+services:
+  - type: web
+    name: riue-survey
+    runtime: python
+    plan: free
+    region: singapore        # 也可改 oregon / frankfurt
+    branch: main
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python server.py"
+    healthCheckPath: /healthz
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false          # 部署后在 Render 面板「Environment」手动填入强密码（必填）
+      - key: PORT
+        value: 10000         # Render 注入的实际端口，server.py 已读取
+    # ── 持久磁盘（仅 Starter 及以上付费档可用）──
+    # disk:
+    #   name: riue-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # 若启用磁盘，再追加环境变量：
+    #   - key: DB_PATH
+    #     value: /var/data/riue_survey.db

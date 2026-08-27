@@ -1,0 +1,33 @@
+# ── Python 缓存 / 编译 ──
+__pycache__/
+*.pyc
+
+# ── 本地数据与日志 ──
+*.db
+*.log
+.env
+
+# ── 生成的物料（可由 set_links.py 重新生成，不进版本控制）──
+*.png
+*.svg
+
+# ── 工作区数据（非源码，含本地记忆等）──
+.workbuddy/
+
+# ── 历史/中间产物（不纳入仓库）──
+live_page.html
+qr_temp.png
+addschema.json
+add_fields.py
+cleanup_test.py
+gen_poster.py
+gen_poster_svg.py
+gen_poster_v2.py
+gen_poster_v3.py
+gen_poster_v4.py
+RIUE_新客户调查问卷.html
+RIUE问卷海报.png
+RIUE问卷海报.svg
+RIUE问卷海报_v2.svg
+RIUE问卷海报_v3.svg
+RIUE问卷海报_v4.svg

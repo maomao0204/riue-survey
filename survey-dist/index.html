@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RIUE 新客户调查 · 体验装选品</title>
+<style>
+  :root{
+    --bg-top:#d6ebe4; --bg-bot:#eef5f2;
+    --accent:#2a8c7a; --accent-dk:#1f6b5d;
+    --ink:#1a2e28; --muted:#6b8a82;
+    --card:#ffffff; --line:#dceae5;
+    --vine:#1f6b5d;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(160deg,var(--bg-top),var(--bg-bot));
+    color:var(--ink); line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  /* ── 顶部品牌区 ── */
+  .topbar{
+    padding:20px 22px 10px; text-align:center;
+  }
+  .badge{ display:inline-block; }
+  .badge svg{ display:block; }
+  .brand-sub{
+    margin-top:6px; font-size:12px; letter-spacing:3px; color:var(--accent-dk); font-weight:600;
+  }
+  /* ── 进度条 ── */
+  .progress-wrap{ width:100%; max-width:520px; margin:14px auto 0; padding:0 22px; }
+  .progress-track{ height:6px; background:rgba(31,107,93,.15); border-radius:6px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent-dk)); border-radius:6px; transition:width .45s cubic-bezier(.4,0,.2,1); }
+  .progress-meta{ display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px; padding:0 2px; }
+
+  /* ── 题目舞台 ── */
+  .stage{ flex:1; display:flex; align-items:center; justify-content:center; padding:18px 20px 120px; }
+  .step-card{
+    width:100%; max-width:520px; background:var(--card);
+    border-radius:22px; padding:30px 26px 28px;
+    box-shadow:0 14px 40px rgba(26,46,40,.10);
+    animation:rise .5s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes rise{ from{opacity:0; transform:translateY(22px);} to{opacity:1; transform:none;} }
+  .step-kicker{ font-size:12px; letter-spacing:2px; color:var(--accent-dk); font-weight:700; margin-bottom:8px; }
+  .step-title{ font-size:23px; font-weight:700; margin:0 0 6px; line-height:1.4; }
+  .step-desc{ font-size:13.5px; color:var(--muted); margin:0 0 22px; }
+
+  .opts{ display:flex; flex-direction:column; gap:11px; }
+  .opt{
+    border:1.6px solid var(--line); border-radius:14px; padding:15px 16px;
+    font-size:15.5px; cursor:pointer; user-select:none; background:#fbfdfc;
+    transition:.18s; display:flex; align-items:center; gap:12px;
+  }
+  .opt:hover{ border-color:var(--accent); }
+  .opt .dot{ width:20px; height:20px; border:2px solid #c7d8d2; border-radius:50%; flex:none; transition:.18s; }
+  .opt .box{ width:20px; height:20px; border:2px solid #c7d8d2; border-radius:6px; flex:none; transition:.18s; position:relative; }
+  .opt.selected{ border-color:var(--accent); background:#eaf6f2; color:var(--accent-dk); font-weight:600; }
+  .opt.selected .dot{ border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 4px #fff; }
+  .opt.selected .box{ border-color:var(--accent); background:var(--accent); }
+  .opt.selected .box::after{ content:""; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2.4px 2.4px 0; transform:rotate(42deg); }
+
+  .field{ width:100%; border:1.6px solid var(--line); border-radius:14px; padding:15px 16px; font-size:15.5px; background:#fbfdfc; color:var(--ink); transition:.18s; }
+  .field:focus{ outline:none; border-color:var(--accent); background:#fff; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:10px; }
+
+  /* ── 底部操作（多选/填空） ── */
+  .action-bar{
+    position:fixed; left:0; right:0; bottom:0; padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(238,245,242,0),rgba(238,245,242,.96) 26%);
+    display:flex; justify-content:center;
+  }
+  .btn{
+    width:100%; max-width:520px; padding:15px; border:none; border-radius:14px;
+    font-size:16px; font-weight:700; letter-spacing:1px; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dk)); color:#fff;
+    box-shadow:0 8px 20px rgba(31,107,93,.28); transition:.2s;
+  }
+  .btn:disabled{ background:#c7d8d2; box-shadow:none; cursor:not-allowed; }
+  .btn:not(:disabled):active{ transform:scale(.985); }
+
+  /* ── 完成页 ── */
+  .done .step-title{ color:var(--accent-dk); }
+  .summary{ background:#f3faf7; border-radius:14px; padding:16px 16px; margin:6px 0 18px; }
+  .summary h4{ margin:0 0 10px; font-size:13px; color:var(--accent-dk); letter-spacing:1px; }
+  .summary ul{ margin:0; padding-left:18px; font-size:13.5px; color:var(--ink); }
+  .summary li{ margin:4px 0; }
+  .summary .none{ color:var(--muted); font-size:13px; }
+  .btn.ghost{ background:transparent; color:var(--accent-dk); border:1.6px solid var(--accent); box-shadow:none; margin-top:10px; }
+  .sync{ font-size:12.5px; text-align:center; margin:2px 0 14px; color:var(--muted); }
+  .sync.ok{ color:var(--accent-dk); font-weight:600; }
+  .sync.warn{ color:#b8862a; }
+
+  .toast{ position:fixed; left:50%; top:18px; transform:translateX(-50%); background:var(--accent-dk); color:#fff; padding:10px 18px; border-radius:10px; font-size:13.5px; opacity:0; transition:.3s; pointer-events:none; z-index:50; }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="badge">
+    <svg width="118" height="60" viewBox="0 0 118 60" xmlns="http://www.w3.org/2000/svg">
+      <!-- 长方形藤蔓徽标 -->
+      <rect x="3" y="6" width="112" height="48" rx="16" fill="none" stroke="#1f6b5d" stroke-width="2.2"/>
+      <path d="M3,12 q 9,-3 11,-13 q 2,-9 -7,-13" transform="translate(3,6)" fill="none" stroke="#1f6b5d" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M-3,-12 q 9,-3 11,-13 q 2,-9 -7,-13" transform="translate(115,6) rotate(180)" fill="none" stroke="#1f6b5d" stroke-width="1.6" stroke-linecap="round"/>
+      <text x="59" y="38" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" font-weight="bold" fill="#2a8c7a" letter-spacing="2">RIUE</text>
+    </svg>
+  </div>
+  <div class="brand-sub">一 个 懂 你 的 品 牌</div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-meta"><span id="pnow">第 1 步</span><span id="ptotal"></span></div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="step-card" id="card"></div>
+</div>
+
+<div class="action-bar" id="actionbar" style="display:none;">
+  <button class="btn" id="nextBtn" onclick="goNext()">继续</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════ 题目配置（与原始问卷字段完全一致） ════════ */
+const STEPS = [
+  { key:"昵称", type:"text", kicker:"基本信息", title:"怎么称呼您？", desc:"用于体验装寄送与回访，仅作内部使用。", placeholder:"如：王女士", required:true },
+  { key:"手机号", type:"tel", kicker:"基本信息", title:"您的手机号？", desc:"方便我们寄送体验装与后续跟进。", placeholder:"11 位手机号", required:true, pattern:/^1[0-9]{10}$/, err:"请输入有效的 11 位手机号" },
+  { key:"年龄段", type:"single", kicker:"基本信息", title:"您的年龄段？", desc:"轻点选项，系统会自动进入下一项。",
+    options:["18-24","25-30","31-40","40 以上"] },
+  { key:"地址", type:"text", kicker:"基本信息", title:"收货地址是？", desc:"省 / 市 / 区 / 详细地址，确保体验装准确寄达。", placeholder:"如：福建省莆田市…", required:true },
+  { key:"身边有人用过RIUE", type:"single", kicker:"您与 RIUE", title:"身边是否有人用过 RIUE？", desc:"轻点选项即可自动进入下一项。",
+    options:["是","否"] },
+  { key:"用过的产品", type:"text", kicker:"您与 RIUE", title:"您之前用过哪些 RIUE 产品？", desc:"选填，新客户可直接留空、点继续。", placeholder:"如未用过可留空", required:false },
+  { key:"肤质", type:"multi", kicker:"肤质画像", title:"您的肤质特点？", desc:"可多选，选好后点「继续」。",
+    options:["多油型肌肤","油痘型肌肤","缺水型肌肤","易敏性肌肤","色素型肌肤"] },
+  { key:"发质", type:"multi", kicker:"发质 / 头皮", title:"您的发质 / 头皮状况？", desc:"可多选，选好后点「继续」。",
+    options:["烫染过","头皮屑","油头","干发"] },
+  { key:"生活状况", type:"multi", kicker:"生活状况", title:"您的生活状况？", desc:"可多选，帮助我们理解您的作息。",
+    options:["熬夜","久坐","饮食不规律","压力大","免疫力弱","经期不调","标准自律"] },
+  { key:"洗护系列选品", type:"multi", kicker:"选品 · 洗护", title:"想尝试哪些洗护产品？", desc:"可多选，选好后点「继续」。",
+    options:["白松露奢耀亮泽护发膜","控油「黄瓶」控油固发洗发水","滋养「白瓶」蛋白润发洗发水","去屑「黑瓶」净屑止痒洗发水","免洗干发蓬松喷雾"] },
+  { key:"素颜护肤系列选品", type:"multi", kicker:"选品 · 素颜护肤", title:"想尝试哪些素颜护肤产品？", desc:"可多选，选好后点「继续」。",
+    options:["净透氨基酸洁颜泥","补水保湿舒缓喷雾","云纱绵融卸妆膏","裸感养肤素颜霜","羽感轻透防晒霜（白瓶）","水感清透倍护防晒霜（黑瓶）"] },
+  { key:"身体香氛系列选品", type:"multi", kicker:"选品 · 身体香氛", title:"想尝试哪些身体香氛产品？", desc:"可多选，选好后点「继续」。",
+    options:["香氛沐浴露","果酸净润身体磨砂膏","净润手部磨砂清洁油"] },
+  { key:"健康养生系列选品", type:"multi", kicker:"选品 · 健康养生", title:"想尝试哪些健康养生产品？", desc:"可多选，选好后点「继续」。",
+    options:["儿童益生菌【绿盒】即食型益生菌粉","有机沙棘原浆","护肝益生菌【蓝盒】即食型益生菌粉","轻体益生菌【粉盒】即食型益生菌粉","有机蓝靛果蓝莓复合果汁精华饮","垆土山药八珍粉"] },
+  { key:"私护系列选品", type:"multi", kicker:"选品 · 私护", title:"想尝试哪些私护产品？", desc:"可多选，选好后点「继续」。",
+    options:["丝蜜呵护清洗液（旅行装2ml*5包）"] },
+];
+const TOTAL = STEPS.length;            // 不含完成页
+const KEY = "riue_survey_data";
+
+let cur = 0;
+const answers = {};
+
+const card = document.getElementById("card");
+const actionbar = document.getElementById("actionbar");
+const nextBtn = document.getElementById("nextBtn");
+const pfill = document.getElementById("pfill");
+const pnow = document.getElementById("pnow");
+const ptotal = document.getElementById("ptotal");
+
+ptotal.textContent = "共 " + TOTAL + " 步";
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function showToast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); }
+
+function render(){
+  const s = STEPS[cur];
+  // 进度
+  pfill.style.width = Math.round((cur/TOTAL)*100) + "%";
+  pnow.textContent = "第 " + (cur+1) + " 步";
+
+  if(!s){ return renderDone(); }
+
+  let body = "";
+  if(s.type === "multi"){
+    body = '<div class="opts">' + s.options.map((o,i)=>
+      `<div class="opt" data-i="${i}" onclick="pickMulti(${cur},${i})"><span class="box"></span><span>${esc(o)}</span></div>`
+    ).join("") + '</div>';
+  } else if(s.type === "single"){
+    body = '<div class="opts">' + s.options.map((o,i)=>
+      `<div class="opt" data-i="${i}" onclick="pickSingle(${cur},${i})"><span class="dot"></span><span>${esc(o)}</span></div>`
+    ).join("") + '</div>';
+  } else { // text / tel
+    const t = s.type === "tel" ? "tel" : "text";
+    body = `<input class="field" id="fld" type="${t}" inputmode="${s.type==='tel'?'numeric':'text'}" placeholder="${esc(s.placeholder||"")}" value="${esc(answers[s.key]||"")}" autocomplete="off">`
+         + `<div class="hint">${esc(s.desc||"")}</div>`;
+  }
+
+  card.className = "step-card";
+  card.innerHTML =
+    `<div class="step-kicker">${esc(s.kicker)}</div>`+
+    `<div class="step-title">${esc(s.title)}</div>`+
+    (s.type==="multi"||s.type==="single" ? `<div class="step-desc">${esc(s.desc)}</div>` : "")+
+    body;
+
+  // 底部按钮：多选 / 填空显示；单选隐藏（自动推进）
+  if(s.type === "single"){
+    actionbar.style.display = "none";
+  } else {
+    actionbar.style.display = "flex";
+    nextBtn.disabled = false;
+    nextBtn.textContent = "继续";
+    nextBtn.onclick = goNext;
+    if(s.type !== "multi"){ setTimeout(()=>{ const f=document.getElementById("fld"); if(f) f.focus(); },250); }
+  }
+}
+
+function pickSingle(stepIdx, i){
+  const s = STEPS[stepIdx];
+  answers[s.key] = s.options[i];
+  // 视觉
+  card.querySelectorAll(".opt").forEach((el,idx)=> el.classList.toggle("selected", idx===i));
+  // 自动推进
+  setTimeout(goNext, 340);
+}
+
+function pickMulti(stepIdx, i){
+  const s = STEPS[stepIdx];
+  const set = new Set(answers[s.key] || []);
+  if(set.has(s.options[i])) set.delete(s.options[i]); else set.add(s.options[i]);
+  answers[s.key] = Array.from(set);
+  // 视觉：按当前答案集合刷新选中态
+  card.querySelectorAll(".opt").forEach((el,idx)=> el.classList.toggle("selected", set.has(s.options[idx])));
+}
+
+function validateCurrent(){
+  const s = STEPS[cur];
+  if(!s) return true;
+  if(s.type === "text" || s.type === "tel"){
+    const v = (document.getElementById("fld")?.value || "").trim();
+    if(s.required && !v){ showToast("此项为必填"); return false; }
+    if(s.pattern && v && !s.pattern.test(v)){ showToast(s.err||"格式不正确"); return false; }
+    answers[s.key] = v;
+  }
+  return true;
+}
+
+function goNext(){
+  if(!validateCurrent()) return;
+  if(cur < TOTAL-1){ cur++; render(); }
+  else { renderDone(); }
+}
+
+/* ── 完成页 ── */
+function renderDone(){
+  pfill.style.width = "100%";
+  pnow.textContent = "已完成";
+  actionbar.style.display = "none";
+
+  const rec = buildRecord();
+  // 本地保存
+  const data = JSON.parse(localStorage.getItem(KEY) || "[]");
+  data.push(rec);
+  localStorage.setItem(KEY, JSON.stringify(data));
+
+  const pickKeys = ["洗护系列选品","素颜护肤系列选品","身体香氛系列选品","健康养生系列选品","私护系列选品"];
+  const allPicks = pickKeys.flatMap(k => answers[k] || []);
+  const tagKeys = ["肤质","发质","生活状况"];
+  const allTags = tagKeys.flatMap(k => answers[k] || []);
+
+  const sumPicks = allPicks.length
+    ? `<ul>${allPicks.map(p=>`<li>${esc(p)}</li>`).join("")}</ul>`
+    : `<div class="none">暂未选择具体产品</div>`;
+  const sumTags = allTags.length
+    ? `<ul>${allTags.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`
+    : `<div class="none">未勾选标签</div>`;
+
+  card.className = "step-card done";
+  card.innerHTML =
+    `<div class="step-kicker">RIUE · 体验装选品</div>`+
+    `<div class="step-title">感谢参与，${esc(answers["昵称"]||"朋友")}！</div>`+
+    `<div class="step-desc">您的偏好已记录，我们将为您匹配专属定制礼盒。</div>`+
+    `<div class="summary"><h4>您的肤质 / 生活画像</h4>${sumTags}</div>`+
+    `<div class="summary"><h4>心仪产品（${allPicks.length} 件）</h4>${sumPicks}</div>`+
+    `<div id="syncstatus" class="sync">正在同步至云端汇总表…</div>`+
+    `<button class="btn" onclick="exportMine()">导出我的答案（CSV）</button>`+
+    `<button class="btn ghost" onclick="restart()">重新填写</button>`;
+  // 同步到后端（自动汇总至腾讯文档）
+  submitToBackend(rec);
+}
+
+function submitToBackend(rec){
+  const st = document.getElementById("syncstatus");
+  const BACKEND_URL = ""; // 留空=同源（server.py 同进程托管页面与 API）；若页面与后端不同源，填后端地址，如 https://api.example.com
+  const apiUrl = (BACKEND_URL ? BACKEND_URL.replace(/\/+$/,"") : "") + "/api/submit";
+  fetch(apiUrl, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ answers: rec })
+  })
+  .then(r=>r.json().then(j=>({ok:r.ok, j})))
+  .then(({ok,j})=>{
+    if(st){
+      if(ok && j.ok){ st.textContent = "✓ 已同步至云端汇总表"; st.className="sync ok"; }
+      else { st.textContent = "（本地已保存，云端同步未完成，可稍后重填导出）"; st.className="sync warn"; }
+    }
+  })
+  .catch(()=>{
+    if(st){ st.textContent = "（本地已保存，云端同步未完成，可稍后重填导出）"; st.className="sync warn"; }
+  });
+}
+
+function buildRecord(){
+  const rec = { "提交时间": new Date().toISOString() };
+  STEPS.forEach(s=> rec[s.key] = Array.isArray(answers[s.key]) ? answers[s.key].join("、") : (answers[s.key]||"") );
+  return rec;
+}
+
+function exportMine(){
+  const data = JSON.parse(localStorage.getItem(KEY) || "[]");
+  if(!data.length){ showToast("暂无数据"); return; }
+  const cols = ["提交时间", ...STEPS.map(s=>s.key)];
+  const escC = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  let csv = "﻿" + cols.join(",") + "\n";
+  data.forEach(r=> csv += cols.map(c=>escC(r[c])).join(",") + "\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "RIUE_我的问卷_" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
+  showToast("已导出 " + data.length + " 份");
+}
+
+function restart(){
+  Object.keys(answers).forEach(k=>delete answers[k]);
+  cur = 0;
+  localStorage.removeItem(KEY);
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

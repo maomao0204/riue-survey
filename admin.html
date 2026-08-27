@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIUE 调查 · 数据后台</title>
+<style>
+  :root{
+    --bg-top:#d6ebe4; --bg-bot:#eef5f2;
+    --accent:#2a8c7a; --accent-dk:#1f6b5d;
+    --ink:#1a2e28; --muted:#6b8a82;
+    --card:#ffffff; --line:#dceae5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(160deg,var(--bg-top),var(--bg-bot)); color:var(--ink); min-height:100vh;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:22px 18px 60px;}
+  header{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;}
+  header .logo{font-family:Georgia,serif; font-weight:bold; font-size:24px; color:var(--accent-dk); letter-spacing:2px;}
+  header .sub{font-size:12px; letter-spacing:2px; color:var(--accent-dk); font-weight:600;}
+  header .spacer{flex:1;}
+  .btn{
+    border:none; border-radius:10px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dk)); color:#fff; transition:.18s;
+  }
+  .btn.ghost{background:transparent; color:var(--accent-dk); border:1.6px solid var(--accent);}
+  .btn:active{transform:scale(.98);}
+
+  /* ── 登录 ── */
+  .login{max-width:380px; margin:12vh auto 0; background:var(--card); border-radius:20px; padding:34px 28px;
+    box-shadow:0 14px 40px rgba(26,46,40,.12);}
+  .login h2{margin:0 0 6px; color:var(--accent-dk);}
+  .login p{margin:0 0 20px; color:var(--muted); font-size:13px;}
+  .login input{width:100%; border:1.6px solid var(--line); border-radius:12px; padding:13px 14px; font-size:15px; margin-bottom:14px;}
+  .login input:focus{outline:none; border-color:var(--accent);}
+
+  /* ── 统计卡 ── */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px;}
+  .stat{background:var(--card); border-radius:16px; padding:16px 18px; box-shadow:0 8px 22px rgba(26,46,40,.07);}
+  .stat .n{font-size:28px; font-weight:800; color:var(--accent-dk);}
+  .stat .l{font-size:12.5px; color:var(--muted); margin-top:2px;}
+  .panel{background:var(--card); border-radius:16px; padding:16px 18px; margin-bottom:16px; box-shadow:0 8px 22px rgba(26,46,40,.07);}
+  .panel h3{margin:0 0 12px; font-size:15px; color:var(--accent-dk);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{background:#eaf6f2; color:var(--accent-dk); border-radius:20px; padding:6px 12px; font-size:13px;}
+  .chip b{font-weight:800;}
+  .bar{display:flex; align-items:center; gap:10px; margin:7px 0; font-size:13px;}
+  .bar .name{width:170px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bar .track{flex:1; height:14px; background:rgba(31,107,93,.12); border-radius:8px; overflow:hidden;}
+  .bar .fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-dk)); border-radius:8px;}
+  .bar .cnt{width:42px; text-align:right; color:var(--muted);}
+
+  /* ── 表格 ── */
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
+  .toolbar input{border:1.6px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; min-width:200px;}
+  .toolbar .spacer{flex:1;}
+  .tablewrap{background:var(--card); border-radius:16px; overflow:auto; box-shadow:0 8px 22px rgba(26,46,40,.07);}
+  table{border-collapse:collapse; width:100%; font-size:13px; min-width:1100px;}
+  th,td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; white-space:nowrap;}
+  th{position:sticky; top:0; background:#f3faf7; color:var(--accent-dk); font-weight:700; z-index:1;}
+  tbody tr:hover{background:#f7fbfa;}
+  td.wrap{white-space:normal; max-width:200px;}
+  .empty{text-align:center; color:var(--muted); padding:40px;}
+  .ts{font-size:11px; color:var(--muted);}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--accent-dk); color:#fff; padding:11px 20px; border-radius:12px; font-size:14px; opacity:0; transition:.3s; pointer-events:none; z-index:99;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app" style="display:none;">
+  <header>
+    <div>
+      <div class="logo">RIUE</div>
+      <div class="sub">调 查 数 据 后 台</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost" onclick="doLogout()">退出登录</button>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <h3>年龄段分布</h3>
+    <div id="ageBars"></div>
+  </div>
+  <div class="panel">
+    <h3>热门选品 Top</h3>
+    <div class="chips" id="topProducts"></div>
+  </div>
+  <div class="panel">
+    <h3>肤质 / 发质 / 生活标签 Top</h3>
+    <div class="chips" id="topTags"></div>
+  </div>
+
+  <div class="toolbar">
+    <input id="search" placeholder="搜索昵称 / 手机号 / 任意内容…" oninput="renderRows()">
+    <div class="spacer"></div>
+    <label style="font-size:13px;color:var(--muted);"><input type="checkbox" id="auto" onchange="toggleAuto()"> 自动刷新(15s)</label>
+    <button class="btn ghost" onclick="loadData()">刷新</button>
+    <button class="btn ghost" onclick="exportCsv()">导出 CSV</button>
+    <button class="btn ghost" onclick="clearAll()">清空全部</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 登录 -->
+<div class="login" id="login">
+  <h2>RIUE 数据后台</h2>
+  <p>仅限管理员登录查看实时汇总</p>
+  <input id="pw" type="password" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn" style="width:100%;" onclick="doLogin()">登录</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "";  // 同源；若管理页与后端不同源，填后端地址如 https://api.xxx.com
+let TOKEN = localStorage.getItem("riue_admin_token") || "";
+let CACHE = { columns:[], rows:[], stats:null };
+
+function apiUrl(p){ return (API||"").replace(/\/+$/,"") + p; }
+function showToast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1900); }
+
+async function api(path, opts={}){
+  const headers = Object.assign({}, opts.headers||{});
+  if(TOKEN) headers["Authorization"] = "Bearer " + TOKEN;
+  const r = await fetch(apiUrl(path), Object.assign({}, opts, {headers}));
+  if(r.status === 401){ doLogout(); throw new Error("登录已失效"); }
+  return r;
+}
+
+async function doLogin(){
+  const pw = document.getElementById("pw").value;
+  const r = await fetch(apiUrl("/api/admin/login"), {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({password:pw})
+  });
+  const j = await r.json();
+  if(j.ok){ TOKEN = j.token; localStorage.setItem("riue_admin_token", TOKEN); enterApp(); loadData(); }
+  else { showToast("密码错误"); }
+}
+function doLogout(){ TOKEN=""; localStorage.removeItem("riue_admin_token"); location.reload(); }
+
+function enterApp(){
+  document.getElementById("login").style.display="none";
+  document.getElementById("app").style.display="block";
+}
+
+async function loadData(){
+  try{
+    const r = await api("/api/admin/records");
+    const j = await r.json();
+    CACHE = j;
+    renderHead(); renderStats(); renderRows();
+  }catch(e){ /* 401 已处理 */ }
+}
+
+function renderHead(){
+  const thead = document.getElementById("thead");
+  thead.innerHTML = "<tr>" + CACHE.columns.map(c=>`<th>${c.label}</th>`).join("") + "</tr>";
+}
+function renderStats(){
+  const s = CACHE.stats || {};
+  document.getElementById("stats").innerHTML = [
+    ["累计提交", s.total||0],
+    ["身边有人用过 RIUE（是）", (s.used_before||{})["是"]||0],
+    ["身边有人用过 RIUE（否）", (s.used_before||{})["否"]||0],
+    ["热门选品数", (s.top_products||[]).length],
+  ].map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+
+  const ages = (s.by_age||{});
+  const maxA = Math.max(1, ...Object.values(ages));
+  document.getElementById("ageBars").innerHTML = Object.entries(ages).map(([k,v])=>
+    `<div class="bar"><div class="name">${k}</div><div class="track"><div class="fill" style="width:${Math.round(v/maxA*100)}%"></div></div><div class="cnt">${v}</div></div>`
+  ).join("");
+
+  document.getElementById("topProducts").innerHTML = (s.top_products||[])
+    .map(p=>`<span class="chip">${p.name} <b>${p.count}</b></span>`).join("") || '<span class="chip">暂无</span>';
+  document.getElementById("topTags").innerHTML = (s.top_tags||[])
+    .map(t=>`<span class="chip">${t.name} <b>${t.count}</b></span>`).join("") || '<span class="chip">暂无</span>';
+}
+function renderRows(){
+  const q = (document.getElementById("search").value||"").toLowerCase();
+  const tbody = document.getElementById("tbody");
+  const cols = CACHE.columns.map(c=>c.key);
+  const rows = (CACHE.rows||[]).filter(r=>{
+    if(!q) return true;
+    return cols.some(k=>String(r[k]||"").toLowerCase().includes(q));
+  });
+  if(!rows.length){ tbody.innerHTML = `<tr><td class="empty" colspan="${cols.length}">暂无数据</td></tr>`; return; }
+  const wrapCols = new Set(["address","used_products","care_pick","skin_pick","fragrance_pick","wellness_pick","intimate_pick"]);
+  tbody.innerHTML = rows.map(r=>"<tr>" + cols.map(k=>{
+    let v = r[k]||"";
+    if(k==="created_at") return `<td class="ts">${v}</td>`;
+    return `<td class="${wrapCols.has(k)?'wrap':''}">${v}</td>`;
+  }).join("") + "</tr>").join("");
+}
+
+function exportCsv(){
+  window.open(apiUrl("/api/admin/export?token="+encodeURIComponent(TOKEN)), "_blank");
+}
+async function clearAll(){
+  if(!confirm("确定清空全部提交数据？此操作不可恢复。")) return;
+  const r = await api("/api/admin/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ids:[]})});
+  const j = await r.json();
+  if(j.ok){ showToast("已清空"); loadData(); }
+}
+
+let autoTimer=null;
+function toggleAuto(){
+  const on = document.getElementById("auto").checked;
+  if(on){ autoTimer = setInterval(loadData, 15000); showToast("已开启自动刷新"); }
+  else { clearInterval(autoTimer); autoTimer=null; }
+}
+
+if(TOKEN){ enterApp(); loadData(); }
+</script>
+</body>
+</html>
