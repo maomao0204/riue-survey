@@ -2,24 +2,20 @@
 """
 PythonAnywhere 部署用 WSGI 入口
 ================================
-本文件内容用于粘贴到 PythonAnywhere 控制台的 WSGI 配置文件
-（路径形如 /var/www/<你的用户名>_pythonanywhere_com_wsgi.py）。
+把本文件【全部内容】整体粘贴到 PythonAnywhere 控制台的 WSGI 配置文件
+（路径形如 /var/www/<用户名>_pythonanywhere_com_wsgi.py），然后 Save + Reload。
 
-使用前请：
-  1. 把下面 USERNAME 改成你在 PythonAnywhere 注册的用户名（即子域名前缀）。
-  2. 在 PA 的 Bash 控制台里执行：
-        git clone https://github.com/maomao0204/riue-survey.git ~/riue-survey
-  3. 把下面的 ADMIN_PASSWORD 改成你想要的密码（这里已用默认 137997953@）。
+前提：在 PA 的 Bash 控制台执行过
+    git clone https://github.com/maomao0204/riue-survey.git ~/riue-survey
 
 部署后访问地址：https://<你的用户名>.pythonanywhere.com
+后台地址：https://<你的用户名>.pythonanywhere.com/admin  （密码见下方 ADMIN_PASSWORD）
 """
 import sys
 import os
 
-# ⚠️ 改成你的 PythonAnywhere 用户名（也是子域名前缀）
-USERNAME = "YOURUSERNAME"
-
-PROJECT_DIR = "/home/{}/riue-survey".format(USERNAME)
+# 项目目录：自动对应当前 PA 用户的 home（~/riue-survey），无需手填用户名
+PROJECT_DIR = os.path.expanduser("~/riue-survey")
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
 
