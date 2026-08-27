@@ -7,6 +7,10 @@ REM ============================================================
 setlocal
 set PORT=8787
 
+REM 管理后台密码（必填！客户看不到，只有你登录 /admin 看数据用）
+REM 改成你自己的强密码，例如： set "ADMIN_PASSWORD=Riue@2026"
+set "ADMIN_PASSWORD="
+
 REM ---- 可选：固定公网地址（named tunnel）----
 REM 留空 = 用 quick tunnel（每次地址随机，重启后需重指二维码）
 REM 填隧道名 = 用固定地址（需先 cloudflared tunnel login 与 create，见 DEPLOY.md 第八节）
