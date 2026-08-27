@@ -20,6 +20,7 @@
     background:linear-gradient(160deg,var(--bg-top),var(--bg-bot));
     color:var(--ink); line-height:1.6;
     display:flex; flex-direction:column; min-height:100vh;
+    position:relative;
   }
   /* ── 顶部品牌区 ── */
   .topbar{
@@ -96,6 +97,31 @@
 
   .toast{ position:fixed; left:50%; top:18px; transform:translateX(-50%); background:var(--accent-dk); color:#fff; padding:10px 18px; border-radius:10px; font-size:13.5px; opacity:0; transition:.3s; pointer-events:none; z-index:50; }
   .toast.show{ opacity:1; }
+
+  /* ── 返回上一题（顶部左） ── */
+  .back-btn{
+    position:absolute; top:16px; left:16px; z-index:20;
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(255,255,255,.72); border:1.6px solid var(--line);
+    color:var(--accent-dk); font-size:19px; line-height:1; cursor:pointer;
+    display:none; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color:transparent; transition:.18s;
+  }
+  .back-btn:active{ transform:scale(.94); background:#fff; }
+
+  /* ── 提交后：专属定制礼盒动效 ── */
+  .gift-wrap{ position:relative; display:flex; flex-direction:column; align-items:center; margin:6px 0 16px; }
+  .gift-glow{ position:absolute; inset:-26px; border-radius:50%; background:radial-gradient(circle, rgba(42,140,122,.35), rgba(42,140,122,0) 70%); animation:glowPulse 2.6s ease-in-out infinite; }
+  @keyframes glowPulse{ 0%,100%{opacity:.45; transform:scale(.92);} 50%{opacity:1; transform:scale(1.06);} }
+  .gift-box{ width:104px; height:104px; position:relative; animation:giftIn .7s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes giftIn{ from{opacity:0; transform:translateY(20px) scale(.82);} to{opacity:1; transform:none;} }
+  .gift-box svg{ width:100%; height:100%; overflow:visible; display:block; }
+  .gift-lid{ transform-origin:50% 30px; animation:lidOpen 1s .55s cubic-bezier(.34,1.4,.64,1) both; }
+  @keyframes lidOpen{ 0%{transform:translateY(0) rotate(0);} 55%{transform:translateY(-9px) rotate(-9deg);} 100%{transform:translateY(-6px) rotate(-4deg);} }
+  .gift-spark{ position:absolute; width:6px; height:6px; border-radius:50%; background:#2a8c7a; opacity:0; animation:spark 1.9s ease-in-out infinite; }
+  @keyframes spark{ 0%{opacity:0; transform:scale(.4);} 40%{opacity:1;} 100%{opacity:0; transform:scale(1.2) translateY(-14px);} }
+  .gift-cap{ font-size:12.5px; color:var(--accent-dk); font-weight:600; margin-top:12px; letter-spacing:1px; }
+  .src-tag{ font-size:12px; color:var(--muted); text-align:center; margin:2px 0 12px; }
 </style>
 </head>
 <body>
@@ -126,6 +152,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<button class="back-btn" id="backBtn" onclick="goBack()" aria-label="返回上一题">←</button>
 
 <script>
 /* ════════ 题目配置（与原始问卷字段完全一致） ════════ */
@@ -158,12 +186,23 @@ const STEPS = [
 const TOTAL = STEPS.length;            // 不含完成页
 const KEY = "riue_survey_data";
 
+/* ── 来源渠道标记（二维码带 ?src= 可区分不同投放海报） ── */
+function getQueryParam(n){ const m = new URLSearchParams(location.search).get(n); return m ? m.trim() : ""; }
+const SRC = getQueryParam("src");   // 例：?src=poster_a → 标记「海报A」渠道
+
+/* ── 条件分支：选「否」跳过「用过的产品」 ── */
+function productSkipped(){ return answers["身边有人用过RIUE"] === "否"; }
+function isSkipped(idx){ return STEPS[idx] && STEPS[idx].key === "用过的产品" && productSkipped(); }
+function visibleBefore(idx){ let c=0; for(let i=0;i<idx;i++) if(!isSkipped(i)) c++; return c; }
+function totalVisible(){ return TOTAL - (productSkipped()?1:0); }
+
 let cur = 0;
 const answers = {};
 
 const card = document.getElementById("card");
 const actionbar = document.getElementById("actionbar");
 const nextBtn = document.getElementById("nextBtn");
+const backBtn = document.getElementById("backBtn");
 const pfill = document.getElementById("pfill");
 const pnow = document.getElementById("pnow");
 const ptotal = document.getElementById("ptotal");
@@ -175,9 +214,11 @@ function showToast(m){ const t=document.getElementById("toast"); t.textContent=m
 
 function render(){
   const s = STEPS[cur];
-  // 进度
-  pfill.style.width = Math.round((cur/TOTAL)*100) + "%";
-  pnow.textContent = "第 " + (cur+1) + " 步";
+  // 进度（按可见步骤计算，分支跳过时不计步数）
+  const tv = totalVisible();
+  pfill.style.width = tv>0 ? Math.round((visibleBefore(cur)+1)/tv*100) + "%" : "0%";
+  pnow.textContent = "第 " + (visibleBefore(cur)+1) + " 步";
+  backBtn.style.display = (cur > 0) ? "flex" : "none";
 
   if(!s){ return renderDone(); }
 
@@ -247,8 +288,45 @@ function validateCurrent(){
 
 function goNext(){
   if(!validateCurrent()) return;
-  if(cur < TOTAL-1){ cur++; render(); }
-  else { renderDone(); }
+  if(cur < TOTAL-1){
+    let n = cur + 1;
+    if(STEPS[n] && STEPS[n].key === "用过的产品" && productSkipped()){
+      n++;                          // 选「否」自动跳过该步
+      delete answers["用过的产品"];   // 明确不选则清掉旧填值
+    }
+    cur = n;
+    render();
+  } else { renderDone(); }
+}
+
+function goBack(){
+  if(cur <= 0) return;
+  let p = cur - 1;
+  if(STEPS[p] && STEPS[p].key === "用过的产品" && productSkipped()){
+    p--;                          // 返回时同样跳过该步
+  }
+  cur = p;
+  render();
+}
+
+/* ── 提交后：专属定制礼盒动效 ── */
+function giftHTML(){
+  const sparks = [[8,6],[86,4],[4,46],[90,52],[50,2],[16,76],[84,80]];
+  const sp = sparks.map(([l,t],i)=>`<span class="gift-spark" style="left:${l}%;top:${t}%;animation-delay:${(i*0.16).toFixed(2)}s"></span>`).join("");
+  return `<div class="gift-wrap">`
+    + `<div class="gift-glow"></div>`
+    + `<div class="gift-box">${sp}`
+    + `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`
+    + `<rect x="22" y="44" width="56" height="40" rx="6" fill="#2a8c7a"/>`
+    + `<rect x="22" y="44" width="56" height="40" rx="6" fill="none" stroke="#1f6b5d" stroke-width="2"/>`
+    + `<rect x="46" y="44" width="8" height="40" fill="#eaf6f2"/>`
+    + `<g class="gift-lid">`
+    + `<rect x="15" y="30" width="70" height="16" rx="5" fill="#1f6b5d"/>`
+    + `<rect x="46" y="30" width="8" height="16" fill="#eaf6f2"/>`
+    + `<path d="M50 30 Q 36 12 28 27 Q 43 30 50 30 Q 57 30 72 27 Q 64 12 50 30 Z" fill="#eaf6f2"/>`
+    + `<circle cx="50" cy="30" r="4.5" fill="#d6ebe4"/>`
+    + `</g></svg></div>`
+    + `<div class="gift-cap">专属定制礼盒已生成</div></div>`;
 }
 
 /* ── 完成页 ── */
@@ -256,6 +334,7 @@ function renderDone(){
   pfill.style.width = "100%";
   pnow.textContent = "已完成";
   actionbar.style.display = "none";
+  backBtn.style.display = "none";
 
   const rec = buildRecord();
   // 本地保存
@@ -279,9 +358,11 @@ function renderDone(){
   card.innerHTML =
     `<div class="step-kicker">RIUE · 体验装选品</div>`+
     `<div class="step-title">感谢参与，${esc(answers["昵称"]||"朋友")}！</div>`+
-    `<div class="step-desc">您的偏好已记录，我们将为您匹配专属定制礼盒。</div>`+
+    `<div class="step-desc">您的偏好已记录，专属定制礼盒正在为您搭配。</div>`+
+    giftHTML() +
     `<div class="summary"><h4>您的肤质 / 生活画像</h4>${sumTags}</div>`+
     `<div class="summary"><h4>心仪产品（${allPicks.length} 件）</h4>${sumPicks}</div>`+
+    (SRC ? `<div class="src-tag">来源渠道：${esc(SRC)}</div>` : "")+
     `<div id="syncstatus" class="sync">正在同步至云端汇总表…</div>`+
     `<button class="btn" onclick="exportMine()">导出我的答案（CSV）</button>`+
     `<button class="btn ghost" onclick="restart()">重新填写</button>`;
@@ -313,13 +394,14 @@ function submitToBackend(rec){
 function buildRecord(){
   const rec = { "提交时间": new Date().toISOString() };
   STEPS.forEach(s=> rec[s.key] = Array.isArray(answers[s.key]) ? answers[s.key].join("、") : (answers[s.key]||"") );
+  rec["来源渠道"] = SRC || "直接访问";
   return rec;
 }
 
 function exportMine(){
   const data = JSON.parse(localStorage.getItem(KEY) || "[]");
   if(!data.length){ showToast("暂无数据"); return; }
-  const cols = ["提交时间", ...STEPS.map(s=>s.key)];
+  const cols = ["提交时间","来源渠道", ...STEPS.map(s=>s.key)];
   const escC = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
   let csv = "﻿" + cols.join(",") + "\n";
   data.forEach(r=> csv += cols.map(c=>escC(r[c])).join(",") + "\n");

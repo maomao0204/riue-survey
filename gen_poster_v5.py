@@ -9,7 +9,7 @@ import sys, io, base64
 sys.path.insert(0, r"C:\Users\ASUS\.workbuddy\plugins\cache\workbuddy-builtin\tencent-docs-plugin\1.0.0\skills\tencent-docs")
 import segno
 
-URL = "https://1e1c640dd4a9fb.lhr.life"
+URL = "https://1e2038f82cc16f.lhr.life"
 
 BG_TOP    = "#d6ebe4"
 BG_BOT    = "#eef5f2"
@@ -24,8 +24,9 @@ W, H = 680, 907
 cx = W // 2
 
 qr = segno.make(URL, error="h")
+# 高清位图二维码：scale=24 保证打印/手机预览都清晰可读
 buf = io.BytesIO()
-qr.save(buf, kind="png", scale=15, border=3, dark="#1a2e28", light="#ffffff")
+qr.save(buf, kind="png", scale=24, border=4, dark="#1a2e28", light="#ffffff")
 qr_b64 = base64.b64encode(buf.getvalue()).decode()
 qr_uri = f"data:image/png;base64,{qr_b64}"
 
@@ -36,13 +37,8 @@ qr_cy  = qr_top + QR // 2
 
 # ── Vine badge helpers ──────────────────────────────────────────
 
-BADGE_CY = 90          # badge vertical centre (was 94)
-INN_W, INN_H = 168, 96 # inner frame size
-INN_RX = 16            # inner corner radius
-OUT_PAD = 14           # vine border outside inner frame
-OUT_W = INN_W + OUT_PAD * 2   # 196
-OUT_H = INN_H + OUT_PAD * 2   # 124
-OUT_RX = 22            # outer vine corner radius
+BADGE_CY = 90          # badge vertical centre
+INN_W, INN_H = 168, 96 # text frame size (reference only, no longer drawn)
 
 
 def leaf(x, y, angle_deg, scale=1.0, color=ACCENT):
@@ -56,70 +52,37 @@ def leaf(x, y, angle_deg, scale=1.0, color=ACCENT):
     )
 
 
-def tendril(x, y, angle_deg, color=ACCENT_DK):
-    """A small curling tendril sprouting outward from a corner."""
-    return (
-        f'<path transform="translate({x},{y}) rotate({angle_deg})" '
-        f'fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" '
-        f'd="M0,0 q 10,-3 13,-14 q 2,-11 -8,-15 q -9,-2 -7,8 q 1,5 7,4"/>'
+def sprig(x, y, angle_deg, scale=1.0, color=ACCENT, n=3):
+    """Zen sprig: one thin, slightly curving stem with a few delicate leaves.
+    Asymmetric and open — it does NOT enclose the text."""
+    parts = [f'<g transform="translate({x},{y}) rotate({angle_deg}) scale({scale})">']
+    # delicate stem growing toward +X, gently waving
+    parts.append(
+        f'<path d="M0,0 Q 16,-5 32,-3 Q 44,-2 56,-7" '
+        f'fill="none" stroke="{ACCENT_DK}" stroke-width="1.0" '
+        f'stroke-linecap="round" opacity="0.8"/>'
     )
+    # a couple of tiny offshoots for an organic, unhurried feel
+    positions = [
+        (16, -3, -58, 0.55),   # small leaf up
+        (32, -3, -18, 0.68),   # leaf pointing right-ish
+        (46, -5, -80, 0.48),   # tiny leaf up
+    ]
+    for lx, ly, la, ls in positions[:n]:
+        parts.append(leaf(lx, ly, la, ls, color))
+    parts.append('</g>')
+    return "".join(parts)
 
 
-def small_leaf(x, y, angle_deg, scale=0.55, color=ACCENT):
-    """Tiny accent leaf."""
-    return leaf(x, y, angle_deg, scale, color)
-
-
-# Build the vine badge SVG fragment
-ix = cx - INN_W // 2       # inner left
-iy = BADGE_CY - INN_H // 2 # inner top
-ox = cx - OUT_W // 2       # outer (vine) left
-oy = BADGE_CY - OUT_H // 2 # outer top
+# ── Minimal zen vine: two sparse, asymmetric sprigs, no enclosure ──
+ix = cx - INN_W // 2       # text left
+iy = BADGE_CY - INN_H // 2 # text top
 
 vine_parts = []
-
-# 1) Inner subtle frame (very light)
-vine_parts.append(
-    f'<rect x="{ix}" y="{iy}" width="{INN_W}" height="{INN_H}" rx="{INN_RX}" '
-    f'fill="none" stroke="{ACCENT}" stroke-width="1.2" opacity="0.35"/>'
-)
-
-# 2) Outer main vine — rounded rectangle (the "rectangle" part)
-vine_parts.append(
-    f'<rect x="{ox}" y="{oy}" width="{OUT_W}" height="{OUT_H}" rx="{OUT_RX}" '
-    f'fill="none" stroke="{ACCENT_DK}" stroke-width="2.4"/>'
-)
-
-# 3) Corner tendrils (sprout outward from each corner)
-#    angles chosen so tendril curls away from the centre
-corner_tendils = [
-    (ox, oy,           -145),  # top-left
-    (ox + OUT_W, oy,    -35),  # top-right
-    (ox, oy + OUT_H,    145),  # bottom-left
-    (ox + OUT_W, oy + OUT_H, 35),  # bottom-right
-]
-for tx, ty, ang in corner_tendils:
-    vine_parts.append(tendril(tx, ty, ang))
-
-# 4) Mid-edge leaves (one per side, pointing outward)
-mid_leaves = [
-    (cx, oy,             -90, 1.0),   # top
-    (cx, oy + OUT_H,      90, 1.0),   # bottom
-    (ox, BADGE_CY,        180, 1.0),  # left
-    (ox + OUT_W, BADGE_CY,  0, 1.0),  # right
-]
-for lx, ly, la, ls in mid_leaves:
-    vine_parts.append(leaf(lx, ly, la, ls))
-
-# 5) Extra tiny accent leaves near corners for lushness
-tiny_leaves = [
-    (ox + 18, oy + 10,         -120, 0.45),
-    (ox + OUT_W - 18, oy + 10,  -60, 0.45),
-    (ox + 18, oy + OUT_H - 10,  120, 0.45),
-    (ox + OUT_W - 18, oy + OUT_H - 10, 60, 0.45),
-]
-for lx, ly, la, ls in tiny_leaves:
-    vine_parts.append(small_leaf(lx, ly, la, ls))
+# top-left sprig, leaning in toward the text (down-right)
+vine_parts.append(sprig(ix - 14, iy - 2, 38, 1.0, ACCENT, n=3))
+# bottom-right sprig, mirrored in feel, slightly smaller (up-left)
+vine_parts.append(sprig(ix + INN_W + 14, iy + INN_H + 2, 218, 0.78, ACCENT, n=2))
 
 badge_svg = "\n".join(vine_parts)
 
